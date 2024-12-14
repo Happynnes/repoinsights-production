@@ -1,0 +1,17 @@
+name: avg_time_to_close_issues
+description: Average time to close issues.
+measurement: hours
+metric: >
+    WITH issue_time AS (
+        SELECT
+            i.repo_id AS project_id,
+            ie.created_at - i.created_at AS time_to_close
+        FROM issues i
+        JOIN issue_events ie ON i.id = ie.issue_id
+        WHERE i.repo_id = %s AND ie.action = 'closed'
+    )
+    SELECT
+        project_id,
+        (EXTRACT(EPOCH FROM AVG(time_to_close)) / 3600) AS avg_time_to_close_issues_hours
+    FROM issue_time
+    GROUP BY project_id;

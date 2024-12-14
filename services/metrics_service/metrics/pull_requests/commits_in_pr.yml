@@ -1,0 +1,19 @@
+name: commits_in_pr
+description: N° of commits that are linked to a pull request
+measurement: Count
+
+variables: [project_id]
+metric: >
+    SELECT
+        pr.base_repo_id AS project_id,
+        pr.id AS pull_request_id,
+        COUNT(DISTINCT c.id) AS num_commits
+    FROM
+        pull_requests pr
+        INNER JOIN pull_request_commits prc ON pr.id = prc.pull_request_id
+        INNER JOIN commits c ON prc.commit_id = c.id
+    WHERE
+        pr.base_repo_id = %s
+    GROUP BY
+        pr.id
+    order by num_commits desc

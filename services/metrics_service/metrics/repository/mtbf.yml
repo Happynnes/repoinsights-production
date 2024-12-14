@@ -1,0 +1,28 @@
+name: mtbf
+description: Mean time between failures assuming an issue is a failure
+measurement: hours
+variables: [project_id, project_id]
+metric: >
+  WITH project_time AS (
+      SELECT 
+          p.id AS project_id,
+          AGE(MAX(e.date), MIN(p.created_at)) AS operation_time
+      FROM 
+          "ghtorrent_restore_2015"."projects" p
+          JOIN "ghtorrent_restore_2015"."extractions" e ON p.id = e.project_id
+      WHERE p.id = %s
+      GROUP BY p.id
+  ),
+  issue_count AS (
+      SELECT
+          i.repo_id AS project_id,
+          COUNT(*) AS failures
+      FROM "ghtorrent_restore_2015"."issues" i
+      WHERE i.repo_id = %s
+      GROUP BY i.repo_id
+  )
+  SELECT
+      pt.project_id,
+      (EXTRACT(EPOCH FROM pt.operation_time) / ic.failures) / 3600 AS mtbf_hours
+  FROM project_time pt
+  JOIN issue_count ic ON pt.project_id = ic.project_id;

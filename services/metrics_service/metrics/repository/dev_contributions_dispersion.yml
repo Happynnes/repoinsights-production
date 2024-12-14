@@ -1,0 +1,80 @@
+name: dev_contributions_dispersion
+description: Top developers that contribute to 80% of the commits divided by the total number of developers
+variables: [project_id, project_id]
+measurement: count
+metric: >
+    WITH max_extraction_date AS (
+        SELECT 
+            MAX(date) AS max_date,
+            project_id
+        FROM "ghtorrent_restore_2015"."extractions" e
+        WHERE e.project_id = %s
+        GROUP BY project_id
+    ),
+    commiters_count AS (
+    WITH total_contributions AS (
+        SELECT 
+            project_id, 
+            COALESCE(committer_id, -1) AS committer_id, 
+            COUNT(COALESCE(committer_id, -1)) AS contributions_per_dev,
+            SUM(COUNT(COALESCE(committer_id, -1))) OVER (PARTITION BY project_id) AS total_contributions
+        FROM 
+            commits 
+        WHERE 
+            project_id = %s
+        GROUP BY 
+            COALESCE(committer_id, -1), 
+            project_id
+    ),
+    cumulative_contributions AS (
+        SELECT 
+            project_id,
+            committer_id,
+            contributions_per_dev,
+            (contributions_per_dev * 1.0) / total_contributions * 100 AS percent_contributions,
+            SUM((contributions_per_dev * 1.0) / total_contributions * 100) OVER (
+                PARTITION BY project_id 
+                ORDER BY (contributions_per_dev * 1.0) / total_contributions DESC
+                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+            ) AS cumulative_percent,
+            ROW_NUMBER() OVER (
+                PARTITION BY project_id
+                ORDER BY (contributions_per_dev * 1.0) / total_contributions DESC
+            ) AS rank
+        FROM 
+            total_contributions
+    ),
+    contributors_to_80_percent AS (
+        SELECT 
+            project_id, 
+            committer_id, 
+            percent_contributions 
+        FROM 
+            cumulative_contributions 
+        WHERE 
+            cumulative_percent <= 80
+    )
+    SELECT 
+        project_id,
+        COUNT(*) AS commiters_count
+    FROM
+        contributors_to_80_percent
+    GROUP BY 
+        project_id
+    ),
+    total_committers AS (
+        SELECT c.project_id, COUNT(DISTINCT COALESCE(c.committer_id, -1)) AS total
+        FROM "ghtorrent_restore_2015"."commits" c
+        JOIN max_extraction_date m ON c.project_id = m.project_id
+        GROUP BY c.project_id
+    )
+        SELECT 
+            CONCAT(u.login, '/', p.name) AS "Proyecto",
+            CASE
+            WHEN total_committers.total = 0 THEN 0
+            ELSE commiters_count.commiters_count::float / total_committers.total
+            END AS "Disperción"
+        FROM commiters_count
+        JOIN total_committers ON commiters_count.project_id = total_committers.project_id
+        JOIN "ghtorrent_restore_2015"."projects" p ON commiters_count.project_id = p.id
+        JOIN "ghtorrent_restore_2015"."users" u ON p.owner_id = u.id;

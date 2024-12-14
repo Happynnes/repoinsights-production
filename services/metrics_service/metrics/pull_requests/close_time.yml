@@ -1,0 +1,42 @@
+name: close_time_pr
+description: The time it takes for a pull request to be closed after it is opened.
+measurement: hours
+metric: >
+    WITH open_pr AS (
+        SELECT
+            pull_request_id,
+            created_at AS opened_at
+        FROM
+            pull_request_history
+        WHERE
+            action = 'opened'
+    ),
+    merged_pr AS (
+        SELECT
+            pull_request_id
+        FROM
+            pull_request_history
+        WHERE
+            action = 'merged'
+    ),
+    closed_pr AS (
+        SELECT
+            pull_request_id,
+            created_at AS closed_at
+        FROM
+            pull_request_history
+        WHERE
+            action = 'closed'
+            AND pull_request_id NOT IN (SELECT pull_request_id FROM merged_pr)
+    )
+    SELECT
+        pr.base_repo_id,
+        pr.id AS pull_request_id,
+        EXTRACT(EPOCH FROM (closed_pr.closed_at - open_pr.opened_at)) / 3600 AS time_to_close_hours
+    FROM
+        pull_requests pr
+        JOIN open_pr ON pr.id = open_pr.pull_request_id
+        JOIN closed_pr ON pr.id = closed_pr.pull_request_id
+        JOIN users usr ON pr.user_id = usr.id
+    WHERE
+        pr.base_repo_id = %s

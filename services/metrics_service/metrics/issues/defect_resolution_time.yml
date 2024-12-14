@@ -1,0 +1,24 @@
+name: defect_resolution_time
+description: Time to resolution for defects.
+measurement: hours
+metric: >
+    SELECT 
+        i.repo_id,
+        i.id AS issue_id,
+        ROUND((EXTRACT(EPOCH FROM (ie.closed_at - i.created_at))/3600)::numeric, 1) AS hours_until_closed
+    FROM 
+        issues i
+    INNER JOIN (
+        SELECT 
+            issue_id, 
+            MAX(created_at) AS closed_at
+        FROM 
+            issue_events
+        WHERE 
+            action = 'closed'
+        GROUP BY 
+            issue_id
+    ) ie ON i.id = ie.issue_id
+    WHERE 
+        i.repo_id = %s AND i.pull_request is false
+    ORDER BY i.issue_id desc

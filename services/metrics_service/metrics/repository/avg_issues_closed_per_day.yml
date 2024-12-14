@@ -1,0 +1,30 @@
+name: issue_closed_per_day
+description: The average number of issues closed per day, calculated between the dates when the first and the last issue were closed
+measurement: count
+metric: >
+    WITH closed_issues AS (
+        SELECT
+          i.id AS issue_id,
+          i.repo_id AS project_id,
+          i.created_at AS created_at,
+          MIN(ie.created_at) AS closed_at
+        FROM issues i
+        JOIN issue_events ie ON i.id = ie.issue_id
+        WHERE  ie.action = 'closed'
+        GROUP BY i.id, i.repo_id
+    ),
+    aggregate_issues AS (
+        SELECT
+            project_id,
+            COUNT(issue_id) AS total_issues_closed,
+            MIN(DATE(closed_at)) AS first_issue_closed,
+            MAX(DATE(closed_at)) AS last_issue_closed
+        FROM closed_issues
+        WHERE project_id = %s
+        GROUP BY project_id
+    )
+    SELECT 
+        project_id, 
+        (total_issues_closed::DECIMAL / (last_issue_closed - first_issue_closed + 1)) AS average_issues_closed_per_day
+    FROM aggregate_issues
+    ORDER BY project_id;

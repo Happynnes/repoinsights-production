@@ -1,0 +1,38 @@
+name: avg_commits_in_pr
+description: Percentage of commits that are linked to a pull request
+measurement: Percentage
+
+variables: [project_id, project_id]
+metric: >
+    WITH
+        all_commits AS (
+            SELECT
+                project_id,
+                COUNT(*) AS total_commits
+            FROM
+                commits
+            WHERE
+                project_id = %s
+            GROUP BY
+                project_id
+        ),
+        linked_commits AS (
+            SELECT
+                c.project_id,
+                COUNT(DISTINCT c.id) AS linked_commits
+            FROM
+                commits c
+                INNER JOIN pull_request_commits prc ON c.id = prc.commit_id
+                INNER JOIN pull_requests pr ON prc.pull_request_id = pr.id
+            WHERE
+                c.project_id = %s
+            GROUP BY
+                c.project_id
+        )
+
+    SELECT
+        all_commits.project_id,
+        (linked_commits.linked_commits::numeric / NULLIF(all_commits.total_commits, 0)) * 100 AS linked_commits_percentage
+    FROM
+        all_commits
+        LEFT JOIN linked_commits ON all_commits.project_id = linked_commits.project_id;

@@ -1,0 +1,29 @@
+name: avg_commits_per_dev
+description: Average number of commits per developer.
+measurement: percentage
+metric: >
+    WITH dev_commits AS (
+    SELECT
+    c.author_id,
+    u.name AS author_name,
+    c.project_id,
+    COUNT(*) AS commit_count
+    FROM
+    commits c
+    INNER JOIN users u ON c.author_id = u.id
+    WHERE
+    c.project_id = %s
+    GROUP BY
+    c.author_id,
+    u.name,
+    c.project_id
+    )
+
+    SELECT
+    project_id,
+    author_id,
+    commit_count::numeric / NULLIF(SUM(commit_count) OVER (), 0) AS avg_commits
+    FROM
+    dev_commits
+    ORDER BY
+    commit_count DESC

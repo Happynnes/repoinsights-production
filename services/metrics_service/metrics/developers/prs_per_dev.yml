@@ -1,0 +1,16 @@
+name: prs_created_per_dev
+description: Number of PRs created by a developer
+measurement: count
+metric: >
+  SELECT 
+      pr.base_repo_id,
+      pr.user_id,
+      COALESCE(COUNT(pr.user_id), 0) AS prs_created
+  FROM 
+      users u 
+  INNER JOIN
+    pull_requests pr
+  ON pr.user_id = u.id
+  WHERE pr.base_repo_id=%s
+  GROUP BY pr.base_repo_id, pr.user_id
+  ORDER BY prs_created DESC

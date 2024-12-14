@@ -1,0 +1,17 @@
+name: num_commits
+description: Number of commits in pull requests.
+measurement: count
+metric: >
+    SELECT
+        base_repo_id AS repo_id, 
+        pr.id AS pull_request_id,
+        COUNT(prc.commit_id) AS num_commits
+    FROM
+        pull_requests pr
+        LEFT JOIN pull_request_commits prc ON pr.id = prc.pull_request_id
+    WHERE
+        pr.base_repo_id = %s
+    GROUP BY
+        pr.id
+    ORDER BY 
+        num_commits DESC;

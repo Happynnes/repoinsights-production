@@ -1,0 +1,20 @@
+name: maintenance_type
+description: The issue labels in the repository.
+measurement: percentage
+metric: >
+    WITH issue_label_mapping AS (
+        SELECT
+            i.id AS issue_id,
+            i.repo_id AS project_id,
+            rl.name AS label
+        FROM issues i
+        JOIN issue_labels il ON i.id = il.issue_id
+        JOIN repo_labels rl ON il.label_id = rl.id
+        WHERE i.repo_id = %s
+    )
+    SELECT
+        project_id,
+        label AS maintenance_type
+    FROM issue_label_mapping
+    GROUP BY project_id, maintenance_type
+    ORDER BY project_id;

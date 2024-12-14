@@ -1,0 +1,49 @@
+name: commits_per_dev
+description: Number of commits per developer.
+variables: [project_id, project_id, project_id]
+measurement: count
+
+metric: >
+    WITH commits_count AS (
+        SELECT
+            project_id,
+            committer_id,
+            COUNT(DISTINCT sha) AS commit_count
+        FROM
+            commits
+        WHERE
+            project_id = %s AND -- Filtro por el proyecto específico
+            committer_id IS NOT NULL -- Filtrar los committer_id NULL
+        GROUP BY
+            project_id,
+            committer_id
+    ),
+    ranked_committers AS (
+        SELECT
+            project_id,
+            committer_id,
+            commit_count,
+            RANK() OVER (PARTITION BY project_id ORDER BY commit_count DESC) AS rank
+        FROM
+            commits_count
+    ),
+    project_committers AS (
+        SELECT
+            project_id,
+            COUNT(DISTINCT committer_id) AS committer_count
+        FROM
+            ranked_committers
+        WHERE
+            project_id = %s
+        GROUP BY
+            project_id
+    )
+    SELECT
+        pc.project_id,
+        rc.committer_id,
+        rc.commit_count
+    FROM
+        project_committers pc
+        JOIN ranked_committers rc ON pc.project_id = rc.project_id
+    WHERE
+        pc.project_id = %s

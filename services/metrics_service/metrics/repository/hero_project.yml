@@ -1,0 +1,46 @@
+name: hero_project
+description: Concentration of contributions from a small number of contributors.
+measurement: boolean
+metric: >
+    WITH total_contributions AS (
+        SELECT
+            project_id,
+            user_id,
+            COUNT(*) AS num_contributions
+        FROM (
+            SELECT project_id, author_id AS user_id FROM commits
+        ) AS all_contributions
+        WHERE project_id = %s
+        GROUP BY project_id, user_id
+    ),
+    contributions_summary AS (
+        SELECT
+            project_id,
+            SUM(num_contributions) AS total_contributions
+        FROM total_contributions
+        GROUP BY project_id
+    ),
+    top_20_contributions AS (
+        SELECT
+            project_id,
+            SUM(num_contributions) AS top_20_contributions
+        FROM (
+            SELECT
+                project_id,
+                user_id,
+                num_contributions,
+                ROW_NUMBER() OVER (PARTITION BY project_id ORDER BY num_contributions DESC) AS row_num
+            FROM total_contributions
+        ) AS ranked_contributors
+        WHERE row_num <= CEIL(0.2 * (SELECT COUNT(DISTINCT user_id) FROM total_contributions WHERE project_id = ranked_contributors.project_id))
+        GROUP BY project_id
+    )
+    SELECT
+        cs.project_id,
+        -- Utiliza una expresión CASE para convertir el valor booleano en un entero
+        CASE
+            WHEN (tc.top_20_contributions >= 0.8 * cs.total_contributions) THEN 1
+            ELSE 0
+        END AS is_hero_project
+    FROM contributions_summary cs
+    JOIN top_20_contributions tc ON cs.project_id = tc.project_id;

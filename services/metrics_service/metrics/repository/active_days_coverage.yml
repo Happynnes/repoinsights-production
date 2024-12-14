@@ -1,0 +1,38 @@
+name: active_days_coverage
+
+measurement: percentage
+variables: [project_id, project_id]
+description:
+metric: >
+    WITH
+        total_days AS (
+            SELECT 
+                r.id AS project_id,
+                (DATE(MAX(c.created_at)) - DATE(MIN(c.created_at))) + 1 AS total_days
+            FROM
+                commits c
+                INNER JOIN projects r ON c.project_id = r.id
+            WHERE
+                r.id = %s
+            GROUP BY
+                r.id
+        ),
+        active_days AS (
+            SELECT
+                r.id AS project_id,
+                COUNT(DISTINCT DATE(c.created_at)) AS active_days
+            FROM
+                commits c
+                INNER JOIN projects r ON c.project_id = r.id
+            WHERE
+                r.id = %s
+            GROUP BY
+                r.id
+        )
+    SELECT
+        total_days.project_id,
+        (active_days.active_days * 1.0) / total_days.total_days AS active_days_coverage
+    FROM
+        total_days 
+    INNER JOIN
+        active_days ON total_days.project_id = active_days.project_id;

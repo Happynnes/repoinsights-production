@@ -1,0 +1,28 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[requires]
+python_version = "3"
+
+[packages]
+black = "*"
+sqlalchemy = "*"
+install = "*"
+python-dotenv = "*"
+pika = "*"
+pygithub = "*"
+psycopg2 = "*"
+loguru = "*"
+httpx = "*"
+redis = "*"
+pandas = "*"
+pylint = "*"
+pyyaml = "*"
+
+[dev-packages]
+black = "*"
+
+[pipenv]
+allow_prereleases = true

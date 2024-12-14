@@ -1,0 +1,13 @@
+name: issue_commented
+description: The number of comments on issues in the repository.
+measurement: count
+metric: >
+    SELECT
+        i.repo_id AS project_id,
+        i.id AS issue_id,
+        COUNT(ic.comment_id) AS num_comments
+    FROM issues i
+    LEFT JOIN issue_comments ic ON i.id = ic.issue_id
+    WHERE i.repo_id = %s AND i.pull_request = false
+    GROUP BY i.id
+    ORDER BY i.id;

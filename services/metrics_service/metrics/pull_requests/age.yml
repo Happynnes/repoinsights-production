@@ -1,0 +1,34 @@
+name: age
+description: Age of pull requests.
+measurement: hours
+metric: >
+    WITH open_close_dates AS (
+        SELECT
+            pr.base_repo_id as repo_id,
+            pr.id AS pull_request_id,
+            MAX(CASE WHEN prh.action = 'opened' THEN prh.created_at END) AS opened_at,
+            MAX(CASE WHEN prh.action = 'merged' THEN prh.created_at END) AS merged_at,
+            MAX(CASE WHEN prh.action = 'closed' THEN prh.created_at END) AS closed_at
+        FROM
+            pull_requests pr
+            JOIN pull_request_history prh ON pr.id = prh.pull_request_id
+        WHERE
+            pr.base_repo_id = %s
+        GROUP BY
+            pr.id
+    )
+    SELECT
+        repo_id,
+        pull_request_id,
+        COALESCE(
+            EXTRACT(EPOCH FROM (CASE
+                WHEN merged_at IS NOT NULL AND closed_at IS NOT NULL THEN merged_at
+                WHEN merged_at IS NULL AND closed_at IS NOT NULL THEN closed_at
+                ELSE NOW()
+            END - opened_at)) / 3600,
+            0
+        ) AS age_hours
+    FROM
+        open_close_dates
+    WHERE
+        opened_at IS NOT NULL;

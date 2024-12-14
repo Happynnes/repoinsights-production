@@ -1,0 +1,37 @@
+name: pr_closure_ratio
+description: Ratio of closed to total pull requests for a repository
+measurement: ratio
+variables: [project_id, project_id]
+metric: >
+  WITH total_pr AS (
+    SELECT
+      pr.base_repo_id AS repo_id,
+      COUNT(*) AS total
+    FROM
+      pull_requests pr
+    WHERE
+      pr.base_repo_id = %s
+    GROUP BY pr.base_repo_id
+  ),
+
+  closed_pr AS (
+    SELECT
+      pr.base_repo_id,
+      COUNT(*) AS closed
+    FROM
+      pull_requests pr
+    JOIN pull_request_history prh ON pr.id = prh.pull_request_id
+    WHERE
+      pr.base_repo_id = %s AND prh.action = 'closed'
+    GROUP BY pr.base_repo_id
+  )
+
+  SELECT
+    p.id,
+    closed_pr.closed::float / total_pr.total::float AS closed_ratio
+  FROM 
+    total_pr
+  JOIN 
+    closed_pr ON total_pr.repo_id = closed_pr.base_repo_id
+  JOIN 
+    projects p ON p.id = total_pr.repo_id

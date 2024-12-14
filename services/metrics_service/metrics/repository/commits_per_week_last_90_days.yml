@@ -1,0 +1,48 @@
+name: commits_per_week_last_90_days
+description: Commits per week for the last 90 days
+measurement: int
+metric: >
+    WITH last_extraction AS (
+        SELECT
+            e.project_id,
+            MAX(e.date) as last_date
+        FROM 
+            extractions e
+        GROUP BY
+            e.project_id
+    ),
+    commits_90_days AS (
+        SELECT 
+            c.project_id,
+            COUNT(*) AS num_commits
+        FROM 
+            commits c
+        JOIN
+            last_extraction le ON c.project_id = le.project_id
+        WHERE 
+            c.created_at BETWEEN le.last_date - interval '90 days' AND le.last_date
+        GROUP BY 
+            c.project_id
+    ), 
+    active_weeks AS (
+        SELECT 
+            c.project_id, 
+            COUNT(DISTINCT date_trunc('week', c.created_at)) AS num_weeks
+        FROM 
+            commits c
+        JOIN 
+            last_extraction le ON c.project_id = le.project_id
+        WHERE 
+            c.created_at BETWEEN le.last_date - interval '90 days' AND le.last_date
+        GROUP BY 
+            c.project_id
+    )
+    SELECT 
+        p.id AS project_id,
+        COALESCE(c.num_commits, 0) / GREATEST(COALESCE(w.num_weeks, 1), 1) AS avg_commits_per_week
+    FROM 
+        projects p 
+        LEFT JOIN active_weeks w ON p.id = w.project_id
+        LEFT JOIN commits_90_days c ON p.id = c.project_id
+    WHERE 
+        p.id = %s

@@ -1,0 +1,38 @@
+name: avg_time_to_open_prs
+description: Average time to open PRs
+measurement: hours
+variables: [project_id, project_id]
+metric: >
+    WITH project_time AS (
+        SELECT
+            base_repo_id,
+            MIN(created_at) AS start_time,
+            MAX(created_at) AS end_time
+        FROM
+            pull_request_history
+            JOIN pull_requests ON pull_requests.id = pull_request_history.pull_request_id
+        WHERE
+            action = 'closed'
+            AND base_repo_id = %s
+        GROUP BY
+            base_repo_id
+    ),
+    total_pr AS (
+        SELECT
+            base_repo_id,
+            COUNT(*) AS total
+        FROM
+            pull_request_history
+            JOIN pull_requests ON pull_requests.id = pull_request_history.pull_request_id
+        WHERE
+            action = 'closed'
+            AND base_repo_id = %s
+        GROUP BY
+            base_repo_id
+    )
+    SELECT
+        project_time.base_repo_id,
+        EXTRACT(EPOCH FROM (project_time.end_time - project_time.start_time)) / 3600 / total_pr.total AS average_time_between_closed_prs_hours
+    FROM
+        project_time
+        JOIN total_pr ON project_time.base_repo_id = total_pr.base_repo_id

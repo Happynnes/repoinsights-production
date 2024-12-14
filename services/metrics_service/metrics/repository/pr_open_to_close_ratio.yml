@@ -1,0 +1,46 @@
+name: pr_open_to_closed_ratio
+description: Ratio of open to closed pull requests for a repository
+variables: [project_id, project_id]
+measurement: ratio
+metric: >
+    WITH opened_prs AS (
+        SELECT
+            pr.base_repo_id,
+            COUNT(*) AS opened_count
+        FROM
+            pull_request_history prh_opened
+            INNER JOIN pull_requests pr ON prh_opened.pull_request_id = pr.id
+        WHERE
+            pr.base_repo_id = %s AND
+            prh_opened.action = 'opened' AND
+            NOT EXISTS (
+                SELECT 1
+                FROM
+                    pull_request_history prh_closed
+                WHERE
+                    prh_closed.pull_request_id = pr.id AND
+                    (prh_closed.action = 'closed' OR prh_closed.action = 'merged')
+            )
+        GROUP BY
+            pr.base_repo_id
+    ),
+    closed_prs AS (
+        SELECT
+            pr.base_repo_id,
+            COUNT(*) AS closed_count
+        FROM
+            pull_request_history prh
+            INNER JOIN pull_requests pr ON prh.pull_request_id = pr.id
+        WHERE
+            pr.base_repo_id = %s AND
+            (prh.action = 'closed' OR prh.action = 'merged')
+        GROUP BY
+            pr.base_repo_id
+    )
+
+    SELECT
+        opened_prs.base_repo_id,
+        (opened_prs.opened_count::numeric / NULLIF(closed_prs.closed_count, 0)) AS open_to_closed_ratio
+    FROM
+        opened_prs
+        INNER JOIN closed_prs ON opened_prs.base_repo_id = closed_prs.base_repo_id;
