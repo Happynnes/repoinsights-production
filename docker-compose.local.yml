@@ -1,156 +1,154 @@
 version: "3.9"
 
 services:
-  redis:
-    image: "redis:latest"
-    ports:
-      - "6379:6379"
+    redis:
+        image: "redis:latest"
+        ports:
+            - "6379:6379"
 
-  consolidada:
-    image: postgres
-    restart: always
-    environment:
-      POSTGRES_USER: "${CONSOLIDADA_USER}"
-      POSTGRES_DB: "ghtorrent"
-      POSTGRES_PASSWORD: "${CONSOLIDADA_PASS}"
-    ports:
-      - "${CONSOLIDADA_PORT}:${CONSOLIDADA_PORT}"
-    expose:
-      - "${CONSOLIDADA_PORT}"
-    command: -p ${CONSOLIDADA_PORT}
-    volumes:
-      - ./docker/postgres-consolidada:/var/lib/postgresql/data
-      - ./${DB_SCHEMA}:/docker-entrypoint-initdb.d/01-schema.sql
-      - ./${DB_DATA}:/docker-entrypoint-initdb.d/02-data.sql
-      - ./constraints.sql:/docker-entrypoint-initdb.d/03-constraints.sql
-      - ./consolidada_db.tar:/consolidada_db.tar
-      - ./consolidada.sh:/docker-entrypoint-initdb.d/04.sh
+    consolidada:
+        image: postgres
+        restart: always
+        environment:
+            POSTGRES_USER: "${CONSOLIDADA_USER}"
+            POSTGRES_DB: "ghtorrent"
+            POSTGRES_PASSWORD: "${CONSOLIDADA_PASS}"
+        ports:
+            - "${CONSOLIDADA_PORT}:${CONSOLIDADA_PORT}"
+        expose:
+            - "${CONSOLIDADA_PORT}"
+        command: -p ${CONSOLIDADA_PORT}
+        volumes:
+            - ./docker/postgres-consolidada:/var/lib/postgresql/data
+            - ./${DB_SCHEMA}:/docker-entrypoint-initdb.d/01-schema.sql
+            - ./${DB_DATA}:/docker-entrypoint-initdb.d/02-data.sql
+            - ./constraints.sql:/docker-entrypoint-initdb.d/03-constraints.sql
+            - ./consolidada_db.tar:/consolidada_db.tar
+            - ./consolidada.sh:/docker-entrypoint-initdb.d/04.sh
 
-  temporal:
-    image: postgres
-    restart: always
-    environment:
-      POSTGRES_USER: "${TEMP_USER}"
-      POSTGRES_DB: "ghtorrent"
-      POSTGRES_PASSWORD: "${TEMP_PASS}"
-    ports:
-      - "${TEMP_PORT}:${TEMP_PORT}"
-    expose:
-      - "${TEMP_PORT}"
-    command: -p ${TEMP_PORT}
-    volumes:
-      - ./docker/postgres-temporal:/var/lib/postgresql/data
-      - ./${DB_SCHEMA}:/docker-entrypoint-initdb.d/01-schema.sql
-      - ./constraints.sql:/docker-entrypoint-initdb.d/02-constraints.sql
+    temporal:
+        image: postgres
+        restart: always
+        environment:
+            POSTGRES_USER: "${TEMP_USER}"
+            POSTGRES_DB: "ghtorrent"
+            POSTGRES_PASSWORD: "${TEMP_PASS}"
+        ports:
+            - "${TEMP_PORT}:${TEMP_PORT}"
+        expose:
+            - "${TEMP_PORT}"
+        command: -p ${TEMP_PORT}
+        volumes:
+            - ./docker/postgres-temporal:/var/lib/postgresql/data
+            - ./${DB_SCHEMA}:/docker-entrypoint-initdb.d/01-schema.sql
+            - ./constraints.sql:/docker-entrypoint-initdb.d/02-constraints.sql
 
-  metabase-db:
-    image: postgres
-    restart: always
-    environment:
-      POSTGRES_USER: "${MB_POSTGRES_USER}"
-      POSTGRES_DB: "${MB_POSTGRES_DB}"
-      POSTGRES_PASSWORD: "${MB_POSTGRES_PASSWORD}"
-    ports:
-      - "${MB_DB_PORT}:${MB_DB_PORT}"
-    expose:
-      - "${MB_DB_PORT}"
-    command: -p '${MB_DB_PORT}'
-    volumes:
-      - ./docker/postgres-metabase:/var/lib/postgresql/data
-      - ./metabase_db.tar:/metabase_db.tar
-      - ./metabase.sh:/docker-entrypoint-initdb.d/04.sh
+    metabase-db:
+        image: postgres
+        restart: always
+        environment:
+            POSTGRES_USER: "${MB_POSTGRES_USER}"
+            POSTGRES_DB: "${MB_POSTGRES_DB}"
+            POSTGRES_PASSWORD: "${MB_POSTGRES_PASSWORD}"
+        ports:
+            - "${MB_DB_PORT}:${MB_DB_PORT}"
+        expose:
+            - "${MB_DB_PORT}"
+        command: -p '${MB_DB_PORT}'
+        volumes:
+            - ./docker/postgres-metabase:/var/lib/postgresql/data
+            - ./metabase_db.tar:/metabase_db.tar
+            - ./metabase.sh:/docker-entrypoint-initdb.d/04.sh
 
-  metabase:
-    image: metabase/metabase:latest
-    restart: always
-    ports:
-      - 3000:3000
-    environment:
-      MB_DB_FILE: ~/repoinsights/docker/metabase-data/metabase.db
-      MB_DB_TYPE: postgres
-      MB_DB_DBNAME: "${MB_POSTGRES_DB}"
-      MB_DB_PORT: "${MB_DB_PORT}"
-      MB_DB_USER: "${MB_POSTGRES_USER}"
-      MB_DB_PASS: "${MB_POSTGRES_PASSWORD}"
-      MB_DB_HOST: "${MB_DB_HOST}"
-      MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE: FALSE
-      MB_EMBEDDING_SECRET_KEY: repoinsight_project
-    depends_on:
-      - metabase-db
+    metabase:
+        image: metabase/metabase:latest
+        restart: always
+        ports:
+            - 3000:3000
+        environment:
+            MB_DB_FILE: ~/repoinsights/docker/metabase-data/metabase.db
+            MB_DB_TYPE: postgres
+            MB_DB_DBNAME: "${MB_POSTGRES_DB}"
+            MB_DB_PORT: "${MB_DB_PORT}"
+            MB_DB_USER: "${MB_POSTGRES_USER}"
+            MB_DB_PASS: "${MB_POSTGRES_PASSWORD}"
+            MB_DB_HOST: "${MB_DB_HOST}"
+            MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE: FALSE
+            MB_EMBEDDING_SECRET_KEY: repoinsight_project
+        depends_on:
+            - metabase-db
 
-  rabbitmq:
-    image: rabbitmq:3.9-management-alpine
-    ports:
-      - 5672:5672
-      - 15672:15672
-    volumes:
-      - ./docker/rabbitmq/:/var/lib/rabbitmq/
-    environment:
-      - RABBITMQ_DEFAULT_USER=${RABBIT_USER}
-      - RABBITMQ_DEFAULT_PASS=${RABBIT_PASS}
+    rabbitmq:
+        image: rabbitmq:3.9-management-alpine
+        ports:
+            - 5672:5672
+            - 15672:15672
+        volumes:
+            - ./docker/rabbitmq/:/var/lib/rabbitmq/
+        environment:
+            - RABBITMQ_DEFAULT_USER=${RABBIT_USER}
+            - RABBITMQ_DEFAULT_PASS=${RABBIT_PASS}
 
-  extract_service:
-    build:
-      context: .
-      dockerfile: Dockerfile.extract
-    restart: always
-    env_file:
-      - .env
-    depends_on:
-      - rabbitmq
-      - temporal
-      - redis
-    environment:
-      - RABBIT_HOST=rabbitmq
-      - TEMP_IP=temporal
-      - REDIS_HOST=redis
-      - PYTHONUNBUFFERED=1
-    deploy:
-      replicas: 2
-    volumes:
-      - ./docker/extract_service:/app/logs
+    #extract_service:
+    #  build:
+    #    context: .
+    #    dockerfile: Dockerfile.extract
+    #  restart: always
+    #  env_file:
+    #    - .env
+    #  depends_on:
+    #    - rabbitmq
+    #    - temporal
+    #    - redis
+    #  environment:
+    #    - RABBIT_HOST=rabbitmq
+    #    - TEMP_IP=temporal
+    #    - REDIS_HOST=redis
+    #    - PYTHONUNBUFFERED=1
+    #  deploy:
+    #    replicas: 2
+    #  volumes:
+    #    - ./docker/extract_service:/app/logs
 
-  pendientes_service:
-    build:
-      context: .
-      dockerfile: Dockerfile.pendientes
-    restart: always
-    env_file:
-      - .env
-    depends_on:
-      - rabbitmq
-      - consolidada
-    environment:
-      - RABBIT_HOST=rabbitmq
-      - CONSOLIDADA_IP=consolidada
-      - PYTHONUNBUFFERED=1
+    #pendientes_service:
+    #  build:
+    #    context: .
+    #    dockerfile: Dockerfile.pendientes
+    #  restart: always
+    #  env_file:
+    #    - .env
+    #  depends_on:
+    #    - rabbitmq
+    #    - consolidada
+    #  environment:
+    #    - RABBIT_HOST=rabbitmq
+    #    - CONSOLIDADA_IP=consolidada
+    #    - PYTHONUNBUFFERED=1
 
-  traspaso_service:
-    build:
-      context: .
-      dockerfile: Dockerfile.traspaso
-    restart: always
-    env_file:
-      - .env
-    depends_on:
-      - rabbitmq
-      - temporal
-      - consolidada
-    environment:
-      - RABBIT_HOST=rabbitmq
-      - TEMP_IP=temporal
-      - CONSOLIDADA_IP=consolidada
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ./docker/trapaso_service:/app/logs
-
-  
+    #traspaso_service:
+    #  build:
+    #    context: .
+    #    dockerfile: Dockerfile.traspaso
+    #  restart: always
+    #  env_file:
+    #    - .env
+    #  depends_on:
+    #    - rabbitmq
+    #    - temporal
+    #    - consolidada
+    #  environment:
+    #    - RABBIT_HOST=rabbitmq
+    #    - TEMP_IP=temporal
+    #    - CONSOLIDADA_IP=consolidada
+    #    - PYTHONUNBUFFERED=1
+    #  volumes:
+    #    - ./docker/trapaso_service:/app/logs
 
 volumes:
-  db:
-  data:
-    external: true
-  rabbitmq:
-  postgres:
-  postgres-temporal:
-  pgadmin-data:
+    db:
+    data:
+        external: true
+    rabbitmq:
+    postgres:
+    postgres-temporal:
+    pgadmin-data:
